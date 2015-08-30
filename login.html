@@ -1,0 +1,26 @@
+<html>
+  <head>
+    <script src="/redirectLocation.js"></script>
+  </head>
+  <body>
+    Who would you like to pretend to be?
+    <form>
+      <input id="username" type="text" placeholder="username"/>
+      <input type="submit" value="Pretend"/>
+    </form>
+    <script type="text/javascript">
+    function getParameterByName(name) {
+      name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+      var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+          results = regex.exec(location.search);
+      return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+    }
+
+     document.getElementsByTagName("form")[0].addEventListener("submit", function(e) {
+       console.log(getParameterByName("redirect_uri"));
+       window.location.href = (getParameterByName("redirect_uri") || redirectLocation) + "&code=" + document.getElementById("username").value + "-access-code";
+       e.preventDefault();
+     });
+    </script>
+  </body>
+</html>

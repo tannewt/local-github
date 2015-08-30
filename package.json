@@ -1,0 +1,24 @@
+{
+  "name": "local-github",
+  "version": "0.1.0",
+  "description": "Provides the GitHub API based on local repos.",
+  "main": "local-github.js",
+  "dependencies": {
+    "axios": "^0.5.4",
+    "nodegit": "tannewt/nodegit",
+    "restify": "^4.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tannewt/local-github.git"
+  },
+  "author": "Scott Shawcroft",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/tannewt/local-github/issues"
+  },
+  "homepage": "https://github.com/tannewt/local-github#readme"
+}
