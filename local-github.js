@@ -8,10 +8,7 @@ var axios = require('axios');
 var config = JSON.parse(fs.readFileSync('config.json'));
 
 function notImplemented(req, res, next) {
-  console.log("unimplemented", req.method, req.url, req.params);
-  if (req.readable) {
-    console.log(req.read().toString());
-  }
+  console.log("unimplemented", req.method, req.url, req.params, req.body);
   res.send(404, "");
   next();
 }
@@ -202,6 +199,60 @@ function changeReference(req, res, next) {
                 });
 }
 
+function postCommitHook(req, res, next) {
+  var lastHead;
+  var head;
+  var repo;
+  Git.Repository.open("repos/" + req.params.user + "/" + req.params.repo)
+                .then(function(r) {
+                  repo = r;
+                  return Git.Commit.lookup(repo, req.params.sha);
+                })
+                .then(function(headCommit) {
+                  head = headCommit;
+                  return headCommit.parent(0);
+                })
+                .then(function(parentCommit) {
+                  parentCommit.repo = repo;
+                  lastHead = parentCommit.id();
+                  return Promise.all([parentCommit.getTree(), head.getTree()]);
+                })
+                .then(function(trees) {
+                  return Git.Diff.treeToTree(repo, trees[0], trees[1]);
+                })
+                .then(function(diff) {
+                  var commit = {"id": req.params.sha,
+                                "timestamp": head.date().toISOString(),
+                                "modified": [],
+                                "added": [],
+                                "deleted": []};
+                  for (var i = 0; i < diff.numDeltas(); i++) {
+                    var d = diff.getDelta(i);
+                    if (d.status() === Git.Diff.DELTA.MODIFIED) {
+                      commit["modified"].push(d.newFile().path());
+                    } else if (d.status() === Git.Diff.DELTA.ADDED) {
+                      commit["added"].push(d.newFile().path());
+                    } else if (d.status() === Git.Diff.DELTA.DELETED) {
+                      commit["deleted"].push(d.newFile().path());
+                    }
+                  }
+                  runWebhooks(repo,
+                              "push",
+                              {"repository": {"owner": {"name": req.params.user}},
+                               "ref": "refs/heads/" + req.params.branch,
+                               "before": lastHead.tostrS(),
+                               "commits": [commit]});
+                  res.header("Content-Type", "text/plain");
+                  res.send(200, "");
+                  next(false);
+                })
+                .catch(function(reason) {
+                  console.log("error stack", reason.stack);
+                  res.send(404, {});
+                  next(false);
+                });
+}
+
 function getCommit(req, res, next) {
   Git.Repository.open("repos/" + req.params.user + "/" + req.params.repo)
                 .then(function(repo) {
@@ -326,7 +377,12 @@ function addFork(req, res, next) {
   var forkingUser = req.params.access_token.replace("-access-token", "");
   res.send(202, {"default_branch": "not_master"});
   next(false);
-  Git.Clone.clone("file://" + process.cwd() + "/repos/" + req.params.user + "/" + req.params.repo, "repos/" + forkingUser + "/" + req.params.repo);
+  Git.Clone.clone("file://" + process.cwd() + "/repos/" + req.params.user + "/" + req.params.repo, "repos/" + forkingUser + "/" + req.params.repo)
+           .then(function(repo) {
+             // Add a hook shell script so we get called back even when files are committed through the git command line.
+             fs.writeFileSync("repos/" + forkingUser + "/" + req.params.repo + "/.git/hooks/post-commit",
+             "curl \"http://localhost:6178/hook/post-commit?sha=`git log -1 --format=format:%H`&user=" + req.params.user + "&repo=" + req.params.repo + "\"", {mode: 0777});
+           });
 }
 
 function login(req, res, next) {
@@ -386,6 +442,9 @@ server.get("/user", getUser);
 server.post("/login/oauth/access_token", accessToken);
 server.get("/login/oauth/authorize", login);
 server.get("/redirectLocation.js", redirectLocation);
+
+// git hook so we can call our webhooks. We will not trigger these when we commit.
+server.get("/hook/post-commit", postCommitHook);
 
 // Catch alls
 server.get(/.*/, notImplemented);
