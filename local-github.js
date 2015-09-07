@@ -171,6 +171,7 @@ function changeReference(req, res, next) {
                 })
                 .then(function(diff) {
                   var commit = {"id": req.params.sha,
+                                "message": head.message(),
                                 "timestamp": head.date().toISOString(),
                                 "modified": [],
                                 "added": [],
@@ -222,6 +223,7 @@ function postCommitHook(req, res, next) {
                 })
                 .then(function(diff) {
                   var commit = {"id": req.params.sha,
+                                "message": head.message(),
                                 "timestamp": head.date().toISOString(),
                                 "modified": [],
                                 "added": [],
@@ -381,7 +383,7 @@ function addFork(req, res, next) {
            .then(function(repo) {
              // Add a hook shell script so we get called back even when files are committed through the git command line.
              fs.writeFileSync("repos/" + forkingUser + "/" + req.params.repo + "/.git/hooks/post-commit",
-             "curl \"http://localhost:6178/hook/post-commit?sha=`git log -1 --format=format:%H`&user=" + req.params.user + "&repo=" + req.params.repo + "\"", {mode: 0777});
+             "curl \"http://localhost:6178/hook/post-commit?sha=`git log -1 --format=format:%H`&user=" + forkingUser + "&repo=" + req.params.repo + "\"", {mode: 0777});
            });
 }
 
