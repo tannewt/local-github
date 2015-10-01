@@ -5,7 +5,7 @@
   "main": "local-github.js",
   "dependencies": {
     "axios": "^0.5.4",
-    "nodegit": "tannewt/nodegit",
+    "nodegit": "nodegit/nodegit#d918aaf3ce9f6b37d2470",
     "restify": "^4.0.0"
   },
   "scripts": {
