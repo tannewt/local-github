@@ -204,9 +204,14 @@ function postCommitHook(req, res, next) {
   var lastHead;
   var head;
   var repo;
+  var branch;
   Git.Repository.open("repos/" + req.params.user + "/" + req.params.repo)
                 .then(function(r) {
                   repo = r;
+                  return repo.getCurrentBranch();
+                })
+                .then(function(reference) {
+                  branch = reference;
                   return Git.Commit.lookup(repo, req.params.sha);
                 })
                 .then(function(headCommit) {
@@ -241,7 +246,7 @@ function postCommitHook(req, res, next) {
                   runWebhooks(repo,
                               "push",
                               {"repository": {"owner": {"name": req.params.user}},
-                               "ref": "refs/heads/" + req.params.branch,
+                               "ref": branch.name(),
                                "before": lastHead.tostrS(),
                                "commits": [commit]});
                   res.header("Content-Type", "text/plain");
